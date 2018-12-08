@@ -1,7 +1,8 @@
 
-#include "socket.h"
-#include "report.h"
-
+#include "kol_socket.h"
+#include "kol_report.h"
+#include "kol_utils.h"
+#include "kol_handle.h"
 
 static u8 socket_connect(int *sockfd, u8 *serverip, u16 serverport)
 {
@@ -44,7 +45,22 @@ static u8 socket_connect(int *sockfd, u8 *serverip, u16 serverport)
         return 1;
     }
   
-#if 1
+
+
+
+	/* 关闭的socket */  
+	if(0!=*sockfd){
+		shutdown(*sockfd,SHUT_RDWR);
+		close(*sockfd);
+		*sockfd=0;
+	}	
+
+	if((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
+		debug_info("create_link -> create socket error");
+		return 1;
+	}
+
+	#if 1
 	flag = fcntl(*sockfd, F_GETFL, 0);
 	
 	if (flag < 0) 
@@ -60,19 +76,6 @@ static u8 socket_connect(int *sockfd, u8 *serverip, u16 serverport)
 	}
 #endif
 
-
-	/* 关闭的socket */  
-	if(0!=*sockfd){
-		shutdown(*sockfd,SHUT_RDWR);
-		close(*sockfd);
-		*sockfd=0;
-	}	
-
-	if((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-		debug_info("create_link -> create socket error");
-		return 1;
-	}
-	
     if(0 != connect(*sockfd, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr)))
     {
 		if(errno!=EINPROGRESS){
@@ -137,7 +140,7 @@ static u8 socket_connect(int *sockfd, u8 *serverip, u16 serverport)
 
 u16 user_data_socket_send(u8 *send_data_buf, u16 send_data_len)
 {	
- 	u16 ret = 0;
+ 	s32 ret = 0;
  	int msgid = 0;
  	system_v_msg_t msg;
  	
@@ -173,7 +176,7 @@ void pthread_socket_data_send()
 	int msgid;
 	u16 len_recv_from_pipe = 0;
 	u16 len_sent = 0;
-	s8 ret = 0;
+	s32 ret = 0;
 	u8 flag_loop_send = 0;
 	system_v_msg_t msg;
  	msgid = msgget((key_t)TBOX_DEFINE_SEND_MSG_PIPE_KEY, 0666 | IPC_CREAT);
@@ -195,9 +198,10 @@ void pthread_socket_data_send()
 	 		ret = send(socket_fd_link_1, msg.data_buf + len_sent, len_recv_from_pipe - len_sent, MSG_DONTWAIT);
 
 			debug_info("send ret = %d, errno = %d : %s.", ret, errno, strerror(errno));
-
+			
 			if(ret >= 0)		//发送成功 
 			{	
+				pri_journal((uint8 *)"rent send data :", msg.data_buf + len_sent, ret);
 				
 				if(ret == (len_recv_from_pipe - len_sent))				//发送完整
 		 		{
@@ -269,15 +273,15 @@ void pthread_socket_data_recv()
 	        {
 	            memset(&msg, 0, sizeof(msg));
 	            
-	        	debug_info("recv success -> len = %d : %02X.", ret, recv_data_buf[0]);
+	        	pri_journal((uint8 *)"rent recv data :", recv_data_buf, ret);
 
 	        	/**** 接收处理 *************************/
 
 				msg.msg_type = TBOX_DEFINE_RECV_MSG_PIPE_TYPE;
 
-				strncpy((char *)msg.data_buf, (char *)recv_data_buf, (size_t)ret);
+				memcpy((char *)msg.data_buf, (char *)recv_data_buf, (size_t)ret);
 				
-				ret = msgsnd(msgid, (void*)&msg, ret, 0);
+				ret = msgsnd(msgid, (void*)&msg, TBOX_DEFINE_MAX_PKG_SIZE, 0);
 				
 				if(ret == -1)
 				{
@@ -292,7 +296,7 @@ void pthread_socket_data_recv()
 	        }
 	        else													//无资源可接收，阻塞500ms
 	        {
-	            wait_ack(&mutex_wait_socket_recv, &cond_wait_socket_recv, TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS);
+	            wait_ack(TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS);
 	            memset(recv_data_buf, 0, TBOX_DEFINE_MAX_PKG_SIZE);
 	            ret = 0;
 	            continue;
@@ -307,19 +311,6 @@ void pthread_socket_data_recv()
 }
 
 
-void wait_ack(pthread_mutex_t *mutex_wait_ack, pthread_cond_t *cond_wait_ack, u32 timeout_ms)
-{
-	struct timespec abstime;
-	struct timeval now;
-	u32 nsec = 0;
-	gettimeofday(&now, NULL);
-	nsec = now.tv_usec * 1000 + (timeout_ms % 1000) * 1000000;
-	abstime.tv_nsec = nsec % 1000000000;
-	abstime.tv_sec = now.tv_sec + nsec / 1000000000 + timeout_ms / 1000;
-	pthread_mutex_lock(mutex_wait_ack);  
-	pthread_cond_timedwait(cond_wait_ack, mutex_wait_ack, &abstime);  
-	pthread_mutex_unlock(mutex_wait_ack); 
-}
 
 
 void pthread_keep_on_line(void)
@@ -327,12 +318,13 @@ void pthread_keep_on_line(void)
 	u8 ret = 0;
 	u8 l_login_ack_err_count = 0;
 	u8 l_heartbeat_ack_err_count = 0;
-
+	u8 msg_buff_data[TBOX_DEFINE_MAX_PKG_SIZE] = {0};
+	u16 msg_buff_len = 0;
+	
 	sem_post(&sem_keep_on_line);
 	
 	while(1)
 	{
-
 		sem_wait(&sem_keep_on_line);
 
 		/* connect */
@@ -342,7 +334,7 @@ void pthread_keep_on_line(void)
 			debug_info("connect.");
 			/**** 处理连接 ********************************/
 
-			ret = socket_connect(&socket_fd_link_1, (u8 *)CONFIG_SERVER_IP_LINK_1, CONFIG_SERVER_PORT_LINK_1);
+			ret = socket_connect(&socket_fd_link_1, (u8 *)g_rent_config.server_ip, g_rent_config.server_port);
 			
 			/************************************/
 			if(ret == 0)								//连接成功
@@ -361,21 +353,22 @@ void pthread_keep_on_line(void)
 			}
 		}
 
-
 		/* login */
 		if((g_connect_status == yes) && (g_login_status == no) && (timer.login.runable == yes))
 		{
 			timer.login.runable = no;
-			
+	
 			debug_info("login.");
 			debug_info("wait login ack.");
 			/**** 处理登入 ******************************/
 			
 			//make and send login
-			user_data_socket_send((u8 *)"0123", 4);
+			//msg_buff_len = rent_make_pkg(RENT_LOGIN, msg_buff_data);
 			
+			user_data_socket_send(msg_buff_data, msg_buff_len);
+	
 			//wait ack
-			wait_ack(&mutex_wait_login_ack, &cond_wait_login_ack, TBOX_DEFINE_WAIT_ACK_MS);
+			wait_ack(TBOX_DEFINE_WAIT_ACK_MS);
 
 			/************************************/
 			if(g_login_ack_status == yes)				//登入应答 - 成功
@@ -387,10 +380,18 @@ void pthread_keep_on_line(void)
 				g_login_status = yes;					//登入状态 = 成功
 				timer.heartbeat.runable = yes;			//可以立即执行心跳检测
 				/**** 处理补发 ******************************/
+#if 0
+				//清除老旧的补发备份数据
+				//rent_clear_old_ressue_file();
 				
 				pthread_t pid_do_data_ressue;
-				pthread_create(&pid_do_data_ressue, NULL, (void *)pthread_do_data_ressue, NULL);
+				pthread_attr_t attr;
+				pthread_attr_init(&attr);
+				pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+				pthread_create(&pid_do_data_ressue, &attr, (void *)pthread_do_data_ressue, NULL);
 				
+				pthread_attr_destroy(&attr);
+#endif				
 				/**********************************/
 			}
 			else if(g_login_ack_status == no)
@@ -410,7 +411,6 @@ void pthread_keep_on_line(void)
 			}
 		}
 
-
 		/* heartbeat */
 		if((g_login_status == yes) && (g_connect_status == yes) && (timer.heartbeat.runable == yes))
 		{
@@ -421,9 +421,12 @@ void pthread_keep_on_line(void)
 			/***** 处理心跳 *******************************/
 
 			//make and send heartbeat
+			//msg_buff_len = rent_make_pkg(RENT_HEARTBEAT, msg_buff_data);
+			
+			user_data_socket_send(msg_buff_data, msg_buff_len);
 			
 			//wait ack
-			wait_ack(&mutex_wait_heartbeat_ack, &cond_wait_heartbeat_ack, TBOX_DEFINE_WAIT_ACK_MS);
+			wait_ack(TBOX_DEFINE_WAIT_ACK_MS);
 
 			/************************************/
 			if(g_heartbeat_ack_status == yes)			//心跳应答正常

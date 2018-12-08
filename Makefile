@@ -4,6 +4,8 @@
 #source file
 #源文件，自动找所有.c文件，并将目标定义为同名.o文件
 SOURCE  := $(wildcard *.c) 
+#OBJS  := rent_config.o rent_data.o rent_main.o rent_report.o rent_socket.o rent_timer.o
+			
 OBJS    := $(patsubst %.c,%.o,$(patsubst %.c,%.o,$(SOURCE)))
   
 #target you can change test to what you want

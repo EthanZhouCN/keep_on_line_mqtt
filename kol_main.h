@@ -39,6 +39,7 @@
 
 
 
+
 #define USE_DEBUG
 #ifdef USE_DEBUG
 #define debug_line() 				printf("[%s:%s] line=%d\r\n",__FILE__, __func__, __LINE__)
@@ -50,43 +51,75 @@
 #define debug_info(fmt,...)
 #endif
 
+#define PRINTF printf
 
-
+/**************************  PUBLIC  ********************************/
 
 #define no 		0
 #define yes 	1
+#define SET		1
+#define CLR		0
+typedef unsigned char 	u8;
+typedef u8 				u8t;
+typedef u8 				uint8;
+typedef unsigned short 	u16;
+typedef u16 			u16t;
+typedef u16 			uint16;
+typedef unsigned int 	u32;
+typedef u32 			u32t;
+typedef u32 			uint32;
+typedef signed char 	s8;
+typedef signed short 	s16;
+typedef signed int 		s32;
 
 
-#define CONFIG_MAX_LOGIN_ACK_ERR_COUNT 		3
-#define CONFIG_MAX_HEARTBEAT_ACK_ERR_COUNT  3
-
-#define CONFIG_RECONNECT_TIME_S				6
-#define CONFIG_RELOGIN_TIME_S 				5
-#define CONFIG_REHEARTBEAT_TIME_S 			3
-
-#define CONFIG_SERVER_IP_LINK_1 			"192.168.31.1"
-#define CONFIG_SERVER_PORT_LINK_1 			8081
+/**************************  SOCKET  ********************************/
 
 
+#define CONFIG_MAX_LOGIN_ACK_ERR_COUNT 					3
+#define CONFIG_MAX_HEARTBEAT_ACK_ERR_COUNT  			3
+
+#define CONFIG_RECONNECT_TIME_S							20
+#define CONFIG_RELOGIN_TIME_S 							10
+
+//#define CONFIG_REHEARTBEAT_TIME_S 					200
+//#define CONFIG_SERVER_IP_LINK_1 						"192.168.31.1"
+//#define CONFIG_SERVER_PORT_LINK_1 					8081
 
 #define TBOX_DEFINE_MAX_PKG_SIZE						1024
 #define TBOX_DEFINE_SEND_MSG_PIPE_KEY					1234
 #define TBOX_DEFINE_RECV_MSG_PIPE_KEY					4321
 #define TBOX_DEFINE_SEND_MSG_PIPE_TYPE 					21
 #define TBOX_DEFINE_RECV_MSG_PIPE_TYPE 					12
-#define TBOX_DEFINE_WAIT_ACK_MS							2000
-#define TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS			500
+#define TBOX_DEFINE_WAIT_ACK_MS							500
+#define TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS			300
+
+/**************************  CONFIG  ********************************/
+#define RENT_RESSUE_JOURNAL_FILE_DIR					"."
+#define RENT_CONFIG_DIR 								"./RentConfig.txt" 
+#define RENT_CONFIG_MAX_LINE 							20
+#define RENT_CONFIG_LINE_SIZE							60	
+
+/**************************  IPC  ********************************/
+
+typedef struct{
+	long int 	msg_type;
+	u8 			data_buf[TBOX_DEFINE_MAX_PKG_SIZE];
+}system_v_msg_t;
 
 
+/**************************  globle var  ********************************/
+
+extern u8 g_connect_status;
+extern u8 g_login_status;
+
+extern u8 volatile g_login_ack_status;
+extern u8 volatile g_heartbeat_ack_status;
+
+extern int socket_fd_link_1;
 
 
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
-typedef signed char s8;
-typedef signed short s16;
-typedef signed int s32;
+/**************************  TIMER  ********************************/
 
 typedef struct{
 	u8 start;
@@ -99,38 +132,20 @@ typedef struct{
 	timer_unit_t connect;
 	timer_unit_t login;
 	timer_unit_t heartbeat;
+	timer_unit_t report;
 }timer_array_t;
 
-typedef struct{
-	long int 	msg_type;
-	u8 			data_buf[TBOX_DEFINE_MAX_PKG_SIZE];
-}system_v_msg_t;
-
-
-
-extern u8 g_connect_status;
-extern u8 g_login_status;
-
-extern u8 volatile g_login_ack_status;
-extern u8 volatile g_heartbeat_ack_status;
 
 extern timer_array_t timer;
 
+
+/**************************  sem & mutex  ********************************/
+
 extern sem_t sem_keep_on_line;
 extern sem_t sem_recv_start;
+extern sem_t sem_report_start;
 
-
-extern pthread_mutex_t mutex_wait_login_ack;
-extern pthread_mutex_t mutex_wait_heartbeat_ack;
-extern pthread_mutex_t mutex_wait_socket_recv;
 extern pthread_mutex_t mutex_socket_data_send;
 
 
-
-extern pthread_cond_t cond_wait_login_ack;
-extern pthread_cond_t cond_wait_heartbeat_ack;
-extern pthread_cond_t cond_wait_socket_recv;
-
-
-extern int socket_fd_link_1;
 #endif /* _MAIN_H_ */

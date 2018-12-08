@@ -1,6 +1,6 @@
 
-#include "timer.h"
-
+#include "kol_timer.h"
+#include "kol_utils.h"
 
 void timer_1s_cbk(int arg)
 {
@@ -19,6 +19,13 @@ void timer_1s_cbk(int arg)
 	{
 		timer.heartbeat.sec_count++;
 	}
+
+	if(timer.report.start == yes)
+	{
+		timer.report.sec_count++;
+	}
+
+	
 
 	if(timer.connect.sec_count >= timer.connect.outvalue)
 	{	
@@ -43,6 +50,14 @@ void timer_1s_cbk(int arg)
 		timer.heartbeat.runable = yes;
 		sem_post(&sem_keep_on_line);
 	}
+
+	if(timer.report.sec_count >= timer.report.outvalue)
+	{
+		timer.report.start = no;
+		timer.report.sec_count = 0;
+		timer.report.runable = yes;
+		sem_post(&sem_report_start);
+	}
 }
 
 
@@ -54,8 +69,9 @@ void timer_1s_init()
 
     timer.connect.outvalue = CONFIG_RECONNECT_TIME_S;
 	timer.login.outvalue = CONFIG_RELOGIN_TIME_S;
-	timer.heartbeat.outvalue = CONFIG_REHEARTBEAT_TIME_S;
-
+	timer.heartbeat.outvalue = g_rent_config.hb_interval;
+	timer.report.outvalue = CONFIG_RELOGIN_TIME_S;
+	
 	timer.connect.runable = yes;
 	timer.login.runable = no;
 	timer.heartbeat.runable = no;
