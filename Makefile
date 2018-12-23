@@ -15,7 +15,7 @@ TARGET  := keep
 #compile and lib parameter
 #编译参数
 CC      := gcc
-LIBS    := -lpthread
+LIBS    := -lpthread -lm
 LDFLAGS :=
 DEFINES :=
 INCLUDE := -I.

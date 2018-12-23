@@ -1,7 +1,6 @@
 #include "kol_main.h"
 #include "kol_socket.h"
 #include "kol_timer.h"
-#include "kol_handle.h"
 #include "kol_report.h"
 #include "kol_utils.h"
 
@@ -34,7 +33,6 @@ timer_array_t timer;
 //fd
 int socket_fd_link_1;
 
-
 int main(int ar, char **arg)
 {
 
@@ -47,10 +45,10 @@ int main(int ar, char **arg)
 	sem_init(&sem_recv_start, 0, 0);
 	sem_init(&sem_report_start, 0, 0);
 	
-	rent_get_config();
-	PRINTF("g_rent_config.server_ip = %s.\n", g_rent_config.server_ip);
-	PRINTF("g_rent_config.server_port = %d.\n", g_rent_config.server_port);
-	PRINTF("g_rent_config.hb_interval = %d.\n", g_rent_config.hb_interval);
+	//rent_get_config();
+	//PRINTF("g_rent_config.server_ip = %s.\n", g_rent_config.server_ip);
+	//PRINTF("g_rent_config.server_port = %d.\n", g_rent_config.server_port);
+	//PRINTF("g_rent_config.hb_interval = %d.\n", g_rent_config.hb_interval);
 
 	//
 	//init_rent_report_format();
@@ -76,9 +74,7 @@ int main(int ar, char **arg)
 
 	//
  	pthread_create(&pid_keeo_on_line, NULL, (void *)pthread_keep_on_line, NULL);
-	pthread_create(&pid_socket_data_send, NULL, (void *)pthread_socket_data_send, NULL);
 	pthread_create(&pid_socket_data_recv, NULL, (void *)pthread_socket_data_recv, NULL);
-	pthread_create(&pid_data_do_handle, NULL, (void *)pthread_data_do_handle, NULL);
 	pthread_create(&pid_data_do_report, NULL, (void *)pthread_data_do_report, NULL);
 	
  	while(1)

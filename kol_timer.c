@@ -69,7 +69,7 @@ void timer_1s_init()
 
     timer.connect.outvalue = CONFIG_RECONNECT_TIME_S;
 	timer.login.outvalue = CONFIG_RELOGIN_TIME_S;
-	timer.heartbeat.outvalue = g_rent_config.hb_interval;
+	timer.heartbeat.outvalue = CONFIG_REHEARTBEAT_TIME_S;
 	timer.report.outvalue = CONFIG_RELOGIN_TIME_S;
 	
 	timer.connect.runable = yes;

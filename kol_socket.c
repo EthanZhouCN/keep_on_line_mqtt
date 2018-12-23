@@ -2,242 +2,54 @@
 #include "kol_socket.h"
 #include "kol_report.h"
 #include "kol_utils.h"
-#include "kol_handle.h"
+#include "mqtt.h"
 
-static u8 socket_connect(int *sockfd, u8 *serverip, u16 serverport)
+
+static int CreateTcpConnect(const char *host, unsigned short port)
 {
-	u8 flag = 0;
+    struct sockaddr_in add;
+    int fd;
+    struct hostent *server;
 
-	struct addrinfo hints;
-    struct addrinfo *res, *cur;
-    int ret;
-    struct sockaddr_in *seraddr_tmp;
-    char seraddr_tmp_ip[16];
-
-    struct sockaddr_in serveraddr;	//最后要填充的网络连接结构体
-
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_INET; 		/* Allow IPv4 */
-    hints.ai_flags = AI_PASSIVE; 	/* For wildcard IP address */
-    hints.ai_protocol = 0; 			/* Any protocol */
-    hints.ai_socktype = SOCK_STREAM;
-       
-    ret = getaddrinfo((char *)serverip, NULL, &hints, &res);
-    
-    if (ret == -1) {
-        perror("getaddrinfo");
-        exit(1);
+    bzero(&add, sizeof(add));
+    add.sin_family = AF_INET;
+    add.sin_port = htons(port);
+    server = gethostbyname(host);
+    if(NULL == server) {
+        printf("Failed to get the ip of the host(%s).\n", host);
+        return -1;
     }
-    
-    for(cur = res; cur != NULL; cur = cur->ai_next) {
-        seraddr_tmp = (struct sockaddr_in *)cur->ai_addr;
-        printf("connect ip : %s\n", inet_ntop(AF_INET, &seraddr_tmp->sin_addr, seraddr_tmp_ip, 16));
+
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if(fd < 0) {
+        printf("Failed to create socket file descriptor.\n");
+        return fd;
     }
-	
-   	memset(&serveraddr, 0, sizeof(serveraddr));
-    serveraddr.sin_family = AF_INET;
-    serveraddr.sin_port = htons(serverport);
-    
-    if( inet_pton(AF_INET, (char *)seraddr_tmp_ip, &serveraddr.sin_addr) <= 0){
-        debug_info("RENT:	inet_pton error.\n");
-		shutdown(*sockfd,SHUT_RDWR);
-		close(*sockfd);
-        return 1;
+
+    bcopy((char*)server->h_addr, (char*)&add.sin_addr.s_addr, server->h_length);
+    if(-1 == connect(fd, (struct sockaddr*)&add, sizeof(add))) {
+        printf("Failed to connect to the server.\n");
+        close(fd);
+        return -1;
     }
-  
 
-
-
-	/* 关闭的socket */  
-	if(0!=*sockfd){
-		shutdown(*sockfd,SHUT_RDWR);
-		close(*sockfd);
-		*sockfd=0;
-	}	
-
-	if((*sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
-		debug_info("create_link -> create socket error");
-		return 1;
-	}
-
-	#if 1
-	flag = fcntl(*sockfd, F_GETFL, 0);
-	
-	if (flag < 0) 
-	{
-		debug_info("create_link -> get flag.\n");
-	}
-		
-	flag |= O_NONBLOCK;
-	
-	if(fcntl(*sockfd, F_SETFL, flag) < 0)
-	{
-		debug_info("create_link -> set flag.\n");
-	}
-#endif
-
-    if(0 != connect(*sockfd, (struct sockaddr *)&serveraddr, sizeof(struct sockaddr)))
-    {
-		if(errno!=EINPROGRESS){
-			debug_info("create_link -> connect error: %s.\n",strerror(errno));
-			shutdown(*sockfd,SHUT_RDWR);
-			close(*sockfd);
-			freeaddrinfo(res);
-			return 1;
-		}
-	}
-	else
-	{
-		
-		struct timeval tm = {2, 0};
-        fd_set wset,rset;
-        FD_ZERO(&wset);
-        FD_ZERO(&rset);
-        FD_SET(*sockfd,&wset);
-        FD_SET(*sockfd,&rset);
-        
-        int res_select = select(*sockfd+1,&rset,&wset,NULL,&tm);
-
-        if(res_select < 0)
-        {
-            debug_info("create_link -> network error in connect\n");
-			shutdown(*sockfd,SHUT_RDWR);
-			close(*sockfd);
-			freeaddrinfo(res);
-			return 1;
-        }
-        else if(res_select == 0)
-        {
-            debug_info("create_link -> connect time out\n");
-			shutdown(*sockfd,SHUT_RDWR);
-			close(*sockfd);
-			freeaddrinfo(res);
-			return 1; 
-        }
-        else
-        { 
-            if(FD_ISSET(*sockfd,&wset))
-            {
-                debug_info("create_link -> connect succeed.\n");
-                freeaddrinfo(res);
-                return 0;
-            }
-            else
-            {
-                debug_info("create_link -> other error when select\n");					
-				shutdown(*sockfd,SHUT_RDWR);
-				close(*sockfd);
-				freeaddrinfo(res);
-				return 1;
-            }
-        }
-	}
-	return 1;
+    return fd;
 }
 
 
 
 
-u16 user_data_socket_send(u8 *send_data_buf, u16 send_data_len)
+uint16_t user_data_socket_send(unsigned char *send_data_buf, unsigned short send_data_len)
 {	
- 	s32 ret = 0;
- 	int msgid = 0;
- 	system_v_msg_t msg;
- 	
- 	msgid = msgget((key_t)TBOX_DEFINE_SEND_MSG_PIPE_KEY, 0666 | IPC_CREAT);
- 	
- 	if(pthread_mutex_lock(&mutex_socket_data_send) != 0)
- 	{
- 		perror("pthread_mutex_lock error!\n");
-    }
- 
- 
- 	msg.msg_type = TBOX_DEFINE_SEND_MSG_PIPE_TYPE;
- 	memcpy((void *)msg.data_buf, (void *)send_data_buf, send_data_len);
- 	
- 	ret = msgsnd(msgid, &msg, send_data_len, 0);
- 	
- 	if(ret == -1)
- 	{
- 		perror("msgsnd");
- 	}
- 
- 	if(pthread_mutex_unlock(&mutex_socket_data_send) != 0)
- 	{
- 		perror("pthread_mutex_unlock error!\n");
-    }
- 	
- 	return ret == 0 ? send_data_len : 0;
-}
-
-
-void pthread_socket_data_send()
-{
-	int msgid;
-	u16 len_recv_from_pipe = 0;
-	u16 len_sent = 0;
-	s32 ret = 0;
-	u8 flag_loop_send = 0;
-	system_v_msg_t msg;
- 	msgid = msgget((key_t)TBOX_DEFINE_SEND_MSG_PIPE_KEY, 0666 | IPC_CREAT);
- 	
-	while(1)
+	int i;
+	printf("send len = 0x%02X.\n", send_data_len);
+	for(i=0;i<send_data_len;i++)
 	{
-		
-		memset(&msg, 0, sizeof(msg));
- 		len_sent = 0;
- 		
- 		len_recv_from_pipe = msgrcv(msgid, &msg, TBOX_DEFINE_MAX_PKG_SIZE, TBOX_DEFINE_SEND_MSG_PIPE_TYPE, 0);
- 	
- 		debug_info("len = %d, msg.type=%ld, msg.date=%s", len_recv_from_pipe, msg.msg_type, msg.data_buf);
-
-		do
-		{
-			flag_loop_send = no;
-			
-	 		ret = send(socket_fd_link_1, msg.data_buf + len_sent, len_recv_from_pipe - len_sent, MSG_DONTWAIT);
-
-			debug_info("send ret = %d, errno = %d : %s.", ret, errno, strerror(errno));
-			
-			if(ret >= 0)		//发送成功 
-			{	
-				pri_journal((uint8 *)"rent send data :", msg.data_buf + len_sent, ret);
-				
-				if(ret == (len_recv_from_pipe - len_sent))				//发送完整
-		 		{
-					debug_info("len_sent == (len_recv_from_pipe - len_sent).");
-		 		}
-		 		else if(ret < (len_recv_from_pipe - len_sent))			//发送未完整
-		 		{
-					debug_info("len_sent < (len_recv_from_pipe - len_sent).");
-					len_sent += ret;
-					flag_loop_send = yes;
-		 		}
-			}
-			else if(ret < 0)
-			{
-				if((errno == EINTR) && (errno == EWOULDBLOCK))			//由于非阻塞造成的正常的“异常”，需要重新发送即可
-		 		{
-					debug_info("resend.");
-					flag_loop_send = yes;
-		 		}
-		 		else													//真正出错，close socket 从新建立连接
-		 		{
-					debug_info("close socket.");
-				
-					close(socket_fd_link_1);
-					
-					g_connect_status = no;
-					g_login_status = no;
-					timer.connect.runable = yes;
-					sem_post(&sem_keep_on_line);
-				
-		 		}
-			}
- 		}
-		while(flag_loop_send);
-		
+		printf("0x%02X ", send_data_buf[i]);
 	}
+	printf("\n");
+	
+	return send(socket_fd_link_1, send_data_buf, send_data_len, 0);
 }
 
 
@@ -245,62 +57,69 @@ void pthread_socket_data_recv()
 {
 	u8 recv_data_buf[TBOX_DEFINE_MAX_PKG_SIZE];
 	s16 ret = 0;
+	int i;
 
-	int msgid;
-	system_v_msg_t msg;
- 	msgid = msgget((key_t)TBOX_DEFINE_RECV_MSG_PIPE_KEY, 0666 | IPC_CREAT);
+	FixedHeader_t FixedHeader;
+	unsigned short toplen = 0;
+	unsigned short paylen = 0;
+	unsigned char top[100] = {0};
+	unsigned char pay[100] = {0};
 
+				
 	while(1)
 	{
 		if(g_connect_status == yes)
 		{
-			ret = recv(socket_fd_link_1, recv_data_buf, TBOX_DEFINE_MAX_PKG_SIZE, MSG_DONTWAIT);
-			
-			if(ret == 0)											//对端套接字关闭
-	        {
-	        	debug_info("recv faild : %s.", recv_data_buf);
+			ret = recv(socket_fd_link_1, recv_data_buf, TBOX_DEFINE_MAX_PKG_SIZE, 0);
 
-	        	close(socket_fd_link_1);
+			printf("recv len = 0x%02X.\n", ret);
+			for(i=0;i<ret;i++)
+			{
+				printf("0x%02X ", recv_data_buf[i]);
+			}
+			printf("\n");
+
+			switch(recv_data_buf[0]>>4)
+			{
+				case MQTT_TypeCONNACK:
+					if(recv_data_buf[3] == 0x00)
+					{
+						g_login_ack_status = yes;	
+					}
 					
-				g_connect_status = no;
-				g_login_status = no;
-				timer.connect.runable = yes;
-				sem_post(&sem_keep_on_line);
-		
-				continue;
-	        }
-	        else if(ret > 0)										//正常接收
-	        {
-	            memset(&msg, 0, sizeof(msg));
-	            
-	        	pri_journal((uint8 *)"rent recv data :", recv_data_buf, ret);
+					break;
+				case MQTT_TypePINGRESP:
+					g_heartbeat_ack_status = yes;	
+					
+					break;
 
-	        	/**** 接收处理 *************************/
+				case MQTT_TypePUBLISH:
 
-				msg.msg_type = TBOX_DEFINE_RECV_MSG_PIPE_TYPE;
-
-				memcpy((char *)msg.data_buf, (char *)recv_data_buf, (size_t)ret);
+					
+					
+					PlatfromPUBLISHAnalysis(recv_data_buf, &FixedHeader, &toplen, top, &paylen, pay);
+					printf("FixedHeader.PacketType = %d.\n", FixedHeader.PacketType);
+					printf("FixedHeader.RemainingLength = %d.\n", FixedHeader.RemainingLength);
+					printf("toplen = %d top = %s.\n", toplen, top);
+					printf("paylen = %d pay = %s.\n", paylen, pay);
 				
-				ret = msgsnd(msgid, (void*)&msg, TBOX_DEFINE_MAX_PKG_SIZE, 0);
-				
-				if(ret == -1)
-				{
-					perror("msgsnd");
-				}
+					
+					break;
 
-	        	/***************************************/
-	        }       
-	        else if((errno == EINTR) && (errno == EWOULDBLOCK))		//被中断，继续接收
-	        {
-	            continue;
-	        }
-	        else													//无资源可接收，阻塞500ms
-	        {
-	            wait_ack(TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS);
-	            memset(recv_data_buf, 0, TBOX_DEFINE_MAX_PKG_SIZE);
-	            ret = 0;
-	            continue;
-	        }
+				case MQTT_TypePUBREC:
+					if(recv_data_buf[1] == 0x02)
+					{
+						unsigned char send_buff[5] = {0};
+						memcpy(send_buff, recv_data_buf, 4);
+						send_buff[0] = 0x62;
+						user_data_socket_send(send_buff, 4);
+					}	
+					
+					break;
+					
+				default:
+					break;
+			}
 
 		}
 		else if(g_connect_status == no)
@@ -334,10 +153,10 @@ void pthread_keep_on_line(void)
 			debug_info("connect.");
 			/**** 处理连接 ********************************/
 
-			ret = socket_connect(&socket_fd_link_1, (u8 *)g_rent_config.server_ip, g_rent_config.server_port);
+			socket_fd_link_1 = CreateTcpConnect("183.230.40.39", 6002);
 			
 			/************************************/
-			if(ret == 0)								//连接成功
+			if(socket_fd_link_1 > 0)								//连接成功
 			{	
 				debug_info("connect success.");
 				
@@ -345,7 +164,7 @@ void pthread_keep_on_line(void)
 				timer.login.runable = yes;				//可以立即执行登入
 				sem_post(&sem_recv_start);				//通知接收线程读取数据
 			}
-			else if(ret == 1)							//连接失败
+			else if(socket_fd_link_1 <= 0)							//连接失败
 			{
 				debug_info("connect faild.");
 					
@@ -363,7 +182,7 @@ void pthread_keep_on_line(void)
 			/**** 处理登入 ******************************/
 			
 			//make and send login
-			//msg_buff_len = rent_make_pkg(RENT_LOGIN, msg_buff_data);
+			msg_buff_len = GetDataConnet(msg_buff_data, "MQTT", 4, 1, 1, 0, 0, 0, 0, 120, "505342358", "193203", "uBJZGOHsvRD8sDttT2uPzF2BbJE=");
 			
 			user_data_socket_send(msg_buff_data, msg_buff_len);
 	
@@ -379,20 +198,7 @@ void pthread_keep_on_line(void)
 								//登入应答标志 - 清除
 				g_login_status = yes;					//登入状态 = 成功
 				timer.heartbeat.runable = yes;			//可以立即执行心跳检测
-				/**** 处理补发 ******************************/
-#if 0
-				//清除老旧的补发备份数据
-				//rent_clear_old_ressue_file();
 				
-				pthread_t pid_do_data_ressue;
-				pthread_attr_t attr;
-				pthread_attr_init(&attr);
-				pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-				pthread_create(&pid_do_data_ressue, &attr, (void *)pthread_do_data_ressue, NULL);
-				
-				pthread_attr_destroy(&attr);
-#endif				
-				/**********************************/
 			}
 			else if(g_login_ack_status == no)
 			{
@@ -410,7 +216,7 @@ void pthread_keep_on_line(void)
 				}
 			}
 		}
-
+#if 1
 		/* heartbeat */
 		if((g_login_status == yes) && (g_connect_status == yes) && (timer.heartbeat.runable == yes))
 		{
@@ -421,7 +227,7 @@ void pthread_keep_on_line(void)
 			/***** 处理心跳 *******************************/
 
 			//make and send heartbeat
-			//msg_buff_len = rent_make_pkg(RENT_HEARTBEAT, msg_buff_data);
+			msg_buff_len = GetDataPINGREQ(msg_buff_data);
 			
 			user_data_socket_send(msg_buff_data, msg_buff_len);
 			
@@ -451,6 +257,7 @@ void pthread_keep_on_line(void)
 				}
 			}
 		}
+#endif
 	}
 }
 
