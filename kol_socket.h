@@ -10,6 +10,7 @@ extern void pthread_socket_data_recv(void);
 
 extern u16 user_data_socket_send(u8 *send_data_buf, u16 send_data_len);
 
+extern volatile unsigned char PUBCOMP_PacketID;
 
 
 #endif /* _SOCKET_H_ */

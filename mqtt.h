@@ -61,12 +61,10 @@ uint16_t GetDataPUBLISH(unsigned char *buff,unsigned char dup, unsigned char qos
 void GetDataSUBSCRIBE(unsigned char *buff,const char *dat,unsigned int Num,unsigned char RequestedQoS);//订阅主题的数据包 Num:主题序号 RequestedQoS:服务质量要求0,1或2
 void GetDataDisConnet(unsigned char *buff);//获取断开连接的数据包
 //uint16_t GetDataConnet(unsigned char *buff);//获取连接的数据包正确连接返回20 02 00 00
-uint16_t GetDataConnet(unsigned char *buff, char *ProtocolName, unsigned char ProtocolLevel, unsigned char UserFlag, unsigned char PasswordFlag, unsigned char WillRetainFlag, unsigned char WillQosFlag, unsigned char WillFlag, unsigned char CleanSessionFlag, unsigned short KeepAlive, unsigned char *ClientIdentifier, unsigned char *UserName, unsigned char *UserPassword);//获取连接的数据包正确连接返回20 02 00 00
+uint16_t GetDataConnet(unsigned char *buff, char *ProtocolName, unsigned char ProtocolLevel, unsigned char UserFlag, unsigned char PasswordFlag, unsigned char WillRetainFlag, unsigned char WillQosFlag, unsigned char WillFlag, unsigned char CleanSessionFlag, unsigned short KeepAlive, char *ClientIdentifier, char *UserName, char *UserPassword);//获取连接的数据包正确连接返回20 02 00 00
 
 uint16_t GetDataPINGREQ(unsigned char *buff);//心跳请求的数据包成功返回d0 00
-uint16_t GetDataPointPUBLISH(unsigned char *buff,unsigned char dup, unsigned char qos,unsigned char retain,const char *topic ,const char *msg);//获取发布消息的数据包
-
-
+uint16_t GetDataPointPUBLISH(unsigned char *buff,unsigned char dup, unsigned char qos,unsigned char retain,const char *topic ,unsigned short packetid, const char *msg);//获取发布消息的数据包
 //void PlatfromPUBLISHAnalysis(unsigned char *buff, FixedHeader_t *FixedHeader, VariableHeader_t *VariableHeader, unsigned char *payload);
 void PlatfromPUBLISHAnalysis(unsigned char *buff, FixedHeader_t *FixedHeader, unsigned short *topicnamelen, unsigned char *topicname, unsigned short *payloadlen, unsigned char *payload);
 

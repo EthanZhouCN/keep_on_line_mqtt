@@ -11,7 +11,7 @@ unsigned char SetMQTTPacketType(unsigned char MesType,unsigned char DupFlag,unsi
 	dat |= (Retain & 0x01);
 	return dat;
 }
-uint16_t GetDataConnet(unsigned char *buff, char *ProtocolName, unsigned char ProtocolLevel, unsigned char UserFlag, unsigned char PasswordFlag, unsigned char WillRetainFlag, unsigned char WillQosFlag, unsigned char WillFlag, unsigned char CleanSessionFlag, unsigned short KeepAlive, unsigned char *ClientIdentifier, unsigned char *UserName, unsigned char *UserPassword)//获取连接的数据包正确连接返回20 02 00 00
+uint16_t GetDataConnet(unsigned char *buff, char *ProtocolName, unsigned char ProtocolLevel, unsigned char UserFlag, unsigned char PasswordFlag, unsigned char WillRetainFlag, unsigned char WillQosFlag, unsigned char WillFlag, unsigned char CleanSessionFlag, unsigned short KeepAlive, char *ClientIdentifier, char *UserName, char *UserPassword)//获取连接的数据包正确连接返回20 02 00 00
 {
 	int RemainedLength = 0;
 
@@ -149,7 +149,7 @@ uint16_t GetDataPUBLISH(unsigned char *buff,unsigned char dup, unsigned char qos
 }
 
 
-uint16_t GetDataPointPUBLISH(unsigned char *buff,unsigned char dup, unsigned char qos,unsigned char retain,const char *topic ,const char *msg)//获取发布消息的数据包
+uint16_t GetDataPointPUBLISH(unsigned char *buff,unsigned char dup, unsigned char qos,unsigned char retain,const char *topic ,unsigned short packetid, const char *msg)//获取发布消息的数据包
 {
 	unsigned int i;
 	int len_size = 1;
@@ -192,8 +192,9 @@ uint16_t GetDataPointPUBLISH(unsigned char *buff,unsigned char dup, unsigned cha
 		*++buff = topic[i];
 		
 	}
-	*++buff = 0;
-	*++buff = 0x18;
+	
+	*++buff = packetid>>8;
+	*++buff = packetid & 0xff;
 
 
 	*++buff = 0x01;				//数据格式

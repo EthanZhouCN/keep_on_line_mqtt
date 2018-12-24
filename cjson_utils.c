@@ -18,7 +18,7 @@ uint16_t DoubleTypeDataPoint2String(unsigned char *buff, char *id, double value)
 	cJSON_AddItemToObject(obj, "datapoints", datapoints_array=cJSON_CreateArray());
     //在对象上添加键值对
     cJSON_AddItemToArray(datapoints_array, obj=cJSON_CreateObject());
-    cJSON_AddItemToObject(obj,"at",cJSON_CreateString("2018-12-10 17:09:38"));
+    //cJSON_AddItemToObject(obj,"at",cJSON_CreateString("2018-12-10 17:09:38"));
     cJSON_AddItemToObject(obj,"value",cJSON_CreateNumber(value));
     
     //清理工作

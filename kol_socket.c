@@ -4,6 +4,8 @@
 #include "kol_utils.h"
 #include "mqtt.h"
 
+volatile unsigned char PUBCOMP_PacketID = 0;
+
 
 static int CreateTcpConnect(const char *host, unsigned short port)
 {
@@ -116,6 +118,13 @@ void pthread_socket_data_recv()
 					}	
 					
 					break;
+				case MQTT_TypePUBCOMP:
+					if(recv_data_buf[1] == 0x02)
+					{
+						PUBCOMP_PacketID = recv_data_buf[2]*128+recv_data_buf[3];
+					}	
+					
+					break;
 					
 				default:
 					break;
@@ -134,7 +143,7 @@ void pthread_socket_data_recv()
 
 void pthread_keep_on_line(void)
 {
-	u8 ret = 0;
+
 	u8 l_login_ack_err_count = 0;
 	u8 l_heartbeat_ack_err_count = 0;
 	u8 msg_buff_data[TBOX_DEFINE_MAX_PKG_SIZE] = {0};
@@ -216,7 +225,7 @@ void pthread_keep_on_line(void)
 				}
 			}
 		}
-#if 1
+
 		/* heartbeat */
 		if((g_login_status == yes) && (g_connect_status == yes) && (timer.heartbeat.runable == yes))
 		{
@@ -257,7 +266,7 @@ void pthread_keep_on_line(void)
 				}
 			}
 		}
-#endif
+
 	}
 }
 
