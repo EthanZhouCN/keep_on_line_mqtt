@@ -40,15 +40,19 @@ void pthread_data_do_report()
 			do{
 
 			_ReTrySendCount++;
+		
 			PUBCOMP_PacketID = 0;
 			
 			ret = user_data_socket_send(msg_buff_data, msg_buff_len);	
 			
 			printf("send ret = %d %x\n", ret, ret);
 
-			wait_ack(1000);
+			printf("wait_ack start.\n");
+			wait_ack(500);
+			printf("wait_ack end.\n");
 
 			}while((PUBCOMP_PacketID != 0x18) && (_ReTrySendCount<=3));
+			
 
 			_ReTrySendCount = 0;
 		}

@@ -81,7 +81,7 @@ typedef signed int 		s32;
 
 #define CONFIG_RECONNECT_TIME_S							20
 #define CONFIG_RELOGIN_TIME_S 							10
-#define CONFIG_REPORT_TIME_S 							1
+#define CONFIG_REPORT_TIME_S 							2
 
 #define CONFIG_REHEARTBEAT_TIME_S 						30
 //#define CONFIG_SERVER_IP_LINK_1 						"192.168.31.1"

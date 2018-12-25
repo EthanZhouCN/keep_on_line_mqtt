@@ -97,15 +97,12 @@ void pthread_socket_data_recv()
 
 				case MQTT_TypePUBLISH:
 
-					
-					
 					PlatfromPUBLISHAnalysis(recv_data_buf, &FixedHeader, &toplen, top, &paylen, pay);
 					printf("FixedHeader.PacketType = %d.\n", FixedHeader.PacketType);
 					printf("FixedHeader.RemainingLength = %d.\n", FixedHeader.RemainingLength);
 					printf("toplen = %d top = %s.\n", toplen, top);
 					printf("paylen = %d pay = %s.\n", paylen, pay);
 				
-					
 					break;
 
 				case MQTT_TypePUBREC:
@@ -122,6 +119,7 @@ void pthread_socket_data_recv()
 					if(recv_data_buf[1] == 0x02)
 					{
 						PUBCOMP_PacketID = recv_data_buf[2]*128+recv_data_buf[3];
+						printf("PUBCOMP_PacketID = %04X\n", PUBCOMP_PacketID);
 					}	
 					
 					break;
