@@ -4,7 +4,7 @@
 #include "kol_utils.h"
 #include "mqtt.h"
 
-volatile unsigned char PUBCOMP_PacketID = 0;
+
 
 
 static int CreateTcpConnect(const char *host, unsigned short port)
@@ -72,6 +72,8 @@ void pthread_socket_data_recv()
 	{
 		if(g_connect_status == yes)
 		{
+			memset(recv_data_buf, 0, TBOX_DEFINE_MAX_PKG_SIZE);
+			
 			ret = recv(socket_fd_link_1, recv_data_buf, TBOX_DEFINE_MAX_PKG_SIZE, 0);
 
 			printf("recv len = 0x%02X.\n", ret);
@@ -102,7 +104,14 @@ void pthread_socket_data_recv()
 					printf("FixedHeader.RemainingLength = %d.\n", FixedHeader.RemainingLength);
 					printf("toplen = %d top = %s.\n", toplen, top);
 					printf("paylen = %d pay = %s.\n", paylen, pay);
-				
+
+					PlatfromCmdPUBLISHRsp(recv_data_buf, &FixedHeader, &toplen, top, &paylen, pay);
+					printf("Cmd Rsp FixedHeader.PacketType = %d.\n", FixedHeader.PacketType);
+					printf("Cmd Rsp FixedHeader.RemainingLength = %d.\n", FixedHeader.RemainingLength);
+					printf("Cmd Rsp toplen = %d top = %s.\n", toplen, top);
+					printf("Cmd Rsp paylen = %d pay = %s.\n", paylen, pay);
+					user_data_socket_send(recv_data_buf, ret);
+					
 					break;
 
 				case MQTT_TypePUBREC:
@@ -118,8 +127,8 @@ void pthread_socket_data_recv()
 				case MQTT_TypePUBCOMP:
 					if(recv_data_buf[1] == 0x02)
 					{
-						PUBCOMP_PacketID = recv_data_buf[2]*128+recv_data_buf[3];
-						printf("PUBCOMP_PacketID = %04X\n", PUBCOMP_PacketID);
+						g.PUBCOMP_PacketID = recv_data_buf[2]*128+recv_data_buf[3];
+						printf("PUBCOMP_PacketID = %04X\n", g.PUBCOMP_PacketID);
 					}	
 					
 					break;

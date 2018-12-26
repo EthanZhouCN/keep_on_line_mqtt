@@ -21,7 +21,7 @@ extern void wait_ack(u32 timeout_ms);
 extern void init_rent_dir(void);
 extern void rent_set_config(void);
 extern void rent_get_config(void);
-
+extern void save_log(char    *filename, char *fmt, ...);
 
 
 #endif /* _RENT_CONFIG_H_ */

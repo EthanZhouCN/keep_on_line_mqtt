@@ -20,6 +20,7 @@ void pthread_data_do_report()
 	double tmpdat = 0;
 	uint16_t ret = 0;
 	unsigned char _ReTrySendCount = 0;
+	int _DateTime[6] = {0};
 	while(1)
 	{
 
@@ -29,7 +30,7 @@ void pthread_data_do_report()
 		//wait
 		sem_wait(&sem_report_start);
 
-		DoubleTypeDataPoint2String(payload_buff, "tmp", tmpdat+=0.000001);	
+		DoubleTypeDataPoint2String(payload_buff, "tmp", tmpdat+=0.000001, _DateTime);	
 			
 		printf("json:\n%s\n", payload_buff);
 	
@@ -39,22 +40,27 @@ void pthread_data_do_report()
 		{
 			do{
 
-			_ReTrySendCount++;
-		
-			PUBCOMP_PacketID = 0;
-			
-			ret = user_data_socket_send(msg_buff_data, msg_buff_len);	
-			
-			printf("send ret = %d %x\n", ret, ret);
+				_ReTrySendCount++;
 
-			printf("wait_ack start.\n");
-			wait_ack(500);
-			printf("wait_ack end.\n");
+				if(_ReTrySendCount > 1)
+				{
+					save_log("kol_log.txt", "%04d-%02d-%02d %02d:%02d:%02d -> _ReTrySendCount = %d\n", _DateTime[0], _DateTime[1], _DateTime[2], 
+																									   _DateTime[3], _DateTime[4], _DateTime[5], _ReTrySendCount);
+				}
+				
+				ret = user_data_socket_send(msg_buff_data, msg_buff_len);	
+				
+				printf("send ret = %d %x\n", ret, ret);
 
-			}while((PUBCOMP_PacketID != 0x18) && (_ReTrySendCount<=3));
+				printf("wait_ack start.\n");
+				wait_ack(400);
+				printf("wait_ack end.\n");
+
+			}while((g.PUBCOMP_PacketID != 0x18) && (_ReTrySendCount<=3));
 			
-
 			_ReTrySendCount = 0;
+			
+			g.PUBCOMP_PacketID = 0;
 		}
 		
 	}

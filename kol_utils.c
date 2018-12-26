@@ -1,4 +1,5 @@
 #include "kol_utils.h"
+#include <stdarg.h>
 
 rent_config_t g_rent_config;
 
@@ -220,5 +221,29 @@ void init_rent_dir()
 	memcpy(dir+6+strlen(RENT_RESSUE_JOURNAL_FILE_DIR), " -p", 3);
 	if(system((const char *)dir));
 }
+
+
+void save_log(char    *filename, char *fmt, ...)
+{
+	if(filename != NULL)
+	{
+		FILE *fp = NULL;
+		
+		char buffer[64] = {0};
+		va_list vArgList ;
+		va_start(vArgList, fmt) ;
+		vsprintf(buffer , fmt, vArgList) ;
+		va_end (vArgList) ;
+		
+		fp=fopen(filename, "a");
+		fwrite(buffer, 1, strlen(buffer), fp);
+		fflush(fp);
+		int fd = fileno(fp);
+		fsync(fd);
+		fclose(fp);
+	}
+}
+
+
 
 

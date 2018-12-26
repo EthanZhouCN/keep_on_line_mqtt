@@ -27,6 +27,10 @@ u8 g_connect_status = 0;
 u8 volatile g_login_ack_status = 0;
 u8 volatile g_heartbeat_ack_status = 0;
 
+globle_var_t g;
+
+
+
 //timer
 timer_array_t timer;
 

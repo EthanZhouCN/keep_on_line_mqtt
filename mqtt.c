@@ -253,43 +253,122 @@ void PlatfromPUBLISHAnalysis(unsigned char *buff, FixedHeader_t *FixedHeader, Va
 
 void PlatfromPUBLISHAnalysis(unsigned char *buff, FixedHeader_t *FixedHeader, unsigned short *topicnamelen, unsigned char *topicname, unsigned short *payloadlen, unsigned char *payload)
 {
+	if(buff == NULL)
+	{
+		return ;
+	}
 	
-	FixedHeader->PacketType = *buff>>4;
-
-	uint8_t multiplier = 1;
-	uint32_t len = 0;
-	uint16_t topic_len = 0;
-	uint16_t payload_len = 0;
+	if(FixedHeader != NULL)
+	{
+		FixedHeader->PacketType = *buff>>4;
+	}
+	uint8_t _multiplier = 1;
+	uint32_t _len = 0;
+	uint16_t _topic_len = 0;
+	uint16_t _payload_len = 0;
 	
 	do{
-		len += (*++buff & 0x7f) * multiplier;
-		multiplier *= 0x80;
+		_len += (*++buff & 0x7f) * _multiplier;
+		_multiplier *= 0x80;
 	}while((*buff & 0x80) != 0);
 
-	FixedHeader->RemainingLength = len;
+	if(FixedHeader != NULL)
+	{	
+		FixedHeader->RemainingLength = _len;
+	}
 	//printf("FixedHeader->RemainingLength = %d.\n", FixedHeader->RemainingLength);
 
-	topic_len = (*++buff)<<8;
-	topic_len |= (*++buff);
-	//printf("topic_len = %d.\n", topic_len);
+	_topic_len = (*++buff)<<8;
+	_topic_len |= (*++buff);
+	//printf("_topic_len = %d.\n", _topic_len);
 	if(topicnamelen != NULL)
 	{
-		*topicnamelen = topic_len;
+		*topicnamelen = _topic_len;
 	}
 	
-	memcpy(topicname, ++buff, topic_len);
 
-	buff += topic_len;
-
-	payload_len = len - topic_len - 2;  //topic_len byte
+	if(topicname != NULL)
+	{
+		memcpy(topicname, ++buff, _topic_len);	
+	}
+	
+	buff += _topic_len;
+	_payload_len = _len - _topic_len - 2;  //_topic_len byte
 	if(payloadlen != NULL)
 	{
-		*payloadlen = payload_len;
+		*payloadlen = _payload_len;
+	}
+
+	if(payload != NULL)
+	{
+		memcpy(payload, buff, _payload_len);
 	}
 	
-	memcpy(payload, buff, payload_len);
 	
 }
 
+
+
+void PlatfromCmdPUBLISHRsp(unsigned char *buff, FixedHeader_t *FixedHeader, unsigned short *topicnamelen, unsigned char *topicname, unsigned short *payloadlen, unsigned char *payload)
+{
+	if((buff == NULL) || (topicname == NULL))
+	{
+		return ;
+	}
+	
+	unsigned char *_topicname_ptr = NULL;
+	
+	if(FixedHeader != NULL)
+	{
+		FixedHeader->PacketType = *buff>>4;
+	}
+	uint8_t _multiplier = 1;
+	uint32_t _len = 0;
+	uint16_t _topic_len = 0;
+	uint16_t _payload_len = 0;
+	
+	do{
+		_len += (*++buff & 0x7f) * _multiplier;
+		_multiplier *= 0x80;
+	}while((*buff & 0x80) != 0);
+
+	if(FixedHeader != NULL)
+	{	
+		FixedHeader->RemainingLength = _len;
+	}
+	//printf("FixedHeader->RemainingLength = %d.\n", FixedHeader->RemainingLength);
+
+	_topic_len = (*++buff)<<8;
+	_topic_len |= (*++buff);
+	//printf("_topic_len = %d.\n", _topic_len);
+	if(topicnamelen != NULL)
+	{
+		*topicnamelen = _topic_len;
+	}
+	
+	_topicname_ptr = ++buff;
+
+	if(topicname != NULL)
+	{
+		memcpy(topicname, _topicname_ptr, _topic_len);
+		topicname[3] = 's';
+		topicname[4] = 'p';
+		memcpy(_topicname_ptr, topicname, _topic_len);	
+	}
+	
+	buff += _topic_len;
+	_payload_len = _len - _topic_len - 2;  //_topic_len byte
+	if(payloadlen != NULL)
+	{
+		*payloadlen = _payload_len;
+	}
+
+	if(payload != NULL)
+	{
+		memcpy(payload, buff, _payload_len);
+	}
+	
+	
+}
 
 

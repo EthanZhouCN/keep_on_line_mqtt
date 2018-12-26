@@ -4,7 +4,7 @@
 
 #include "stdint.h"
 
-extern uint16_t DoubleTypeDataPoint2String(unsigned char *buff, char *id, double value);
+extern uint16_t DoubleTypeDataPoint2String(unsigned char *buff, char *id, double value, int *datetime);
 
 
 
