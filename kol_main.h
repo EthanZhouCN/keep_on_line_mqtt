@@ -81,7 +81,7 @@ typedef signed int 		s32;
 
 #define CONFIG_RECONNECT_TIME_S							20
 #define CONFIG_RELOGIN_TIME_S 							10
-#define CONFIG_REPORT_TIME_S 							10
+#define CONFIG_REPORT_TIME_S 							3
 
 #define CONFIG_REHEARTBEAT_TIME_S 						30
 //#define CONFIG_SERVER_IP_LINK_1 						"192.168.31.1"
@@ -92,8 +92,8 @@ typedef signed int 		s32;
 #define TBOX_DEFINE_RECV_MSG_PIPE_KEY					4321
 #define TBOX_DEFINE_SEND_MSG_PIPE_TYPE 					21
 #define TBOX_DEFINE_RECV_MSG_PIPE_TYPE 					12
-#define TBOX_DEFINE_WAIT_ACK_MS							500
-#define TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS			300
+#define TBOX_DEFINE_WAIT_ACK_MS							1500
+#define TBOX_DEFINE_WAIT_SOCKET_RECV_AGINE_MS			1300
 
 /**************************  CONFIG  ********************************/
 #define RENT_RESSUE_JOURNAL_FILE_DIR					"."

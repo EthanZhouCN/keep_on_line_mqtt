@@ -197,7 +197,7 @@ uint16_t GetDataPointPUBLISH(unsigned char *buff,unsigned char dup, unsigned cha
 	*++buff = packetid & 0xff;
 
 
-	*++buff = 0x01;				//数据格式
+	*++buff = 0x03;				//数据格式
 	
 	*++buff = msg_len>>8;
 	*++buff = msg_len;

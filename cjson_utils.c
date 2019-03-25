@@ -19,6 +19,23 @@ static void get_time(struct tm *_tm)
 	_tm->tm_sec 	= timenow->tm_sec;
 }
 
+
+uint16_t DataPoint2Json(unsigned char *buff, char *id_1, double value_1, char *id_2, unsigned char value_2)
+{
+	/*
+		{ 
+		“datastream_id1”:”value1”, 
+		“datastream_id2”:”value2”,
+		…
+		}
+	*/
+
+	sprintf(buff, "{\"%s\":%f,\"%s\":%d}", id_1, value_1, id_2, value_2);
+
+	return strlen(buff);
+
+}
+
 uint16_t DoubleTypeDataPoint2String(unsigned char *buff, char *id, double value, int *datetime)
 {
 	uint16_t buff_len = 0;

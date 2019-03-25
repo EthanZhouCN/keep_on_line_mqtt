@@ -18,6 +18,7 @@ void pthread_data_do_report()
 
 	unsigned char payload_buff[256] = {0};
 	double tmpdat = 0;
+	unsigned char leddat = 0;
 	uint16_t ret = 0;
 	unsigned char _ReTrySendCount = 0;
 	int _DateTime[6] = {0};
@@ -30,11 +31,12 @@ void pthread_data_do_report()
 		//wait
 		sem_wait(&sem_report_start);
 
-		DoubleTypeDataPoint2String(payload_buff, "tmp", tmpdat+=0.000001, _DateTime);	
-			
+		memset(payload_buff, 0, sizeof(payload_buff));
+		//DoubleTypeDataPoint2String(payload_buff, "tmp", tmpdat+=0.1, _DateTime);	
+		DataPoint2Json(payload_buff, "tmp", tmpdat+=0.1, "led", leddat+=1);	
 		printf("json:\n%s\n", payload_buff);
 	
-		msg_buff_len = GetDataPointPUBLISH(msg_buff_data, 0, 2, 0, (char *)"$dp", 0x18, (char *)payload_buff);
+		msg_buff_len = GetDataPointPUBLISH(msg_buff_data, 0, 1, 0, (char *)"$dp", 0x18, (char *)payload_buff);
 
 		if(g_login_status == yes)
 		{
@@ -53,7 +55,7 @@ void pthread_data_do_report()
 				printf("send ret = %d %x\n", ret, ret);
 
 				printf("wait_ack start.\n");
-				wait_ack(400);
+				wait_ack(1500);
 				printf("wait_ack end.\n");
 
 			}while((g.PUBCOMP_PacketID != 0x18) && (_ReTrySendCount<=3));

@@ -9,6 +9,7 @@
 
 static int CreateTcpConnect(const char *host, unsigned short port)
 {
+	printf("server ip %s\n", host);
     struct sockaddr_in add;
     int fd;
     struct hostent *server;
@@ -85,7 +86,7 @@ void pthread_socket_data_recv()
 
 			switch(recv_data_buf[0]>>4)
 			{
-				case MQTT_TypeCONNACK:
+				case MQTT_TypeCONNACK:	
 					if(recv_data_buf[3] == 0x00)
 					{
 						g_login_ack_status = yes;	
@@ -97,7 +98,7 @@ void pthread_socket_data_recv()
 					
 					break;
 
-				case MQTT_TypePUBLISH:
+				case MQTT_TypePUBLISH:  //接收命令
 
 					PlatfromPUBLISHAnalysis(recv_data_buf, &FixedHeader, &toplen, top, &paylen, pay);
 					printf("FixedHeader.PacketType = %d.\n", FixedHeader.PacketType);
@@ -113,7 +114,7 @@ void pthread_socket_data_recv()
 					user_data_socket_send(recv_data_buf, ret);
 					
 					break;
-
+#if 0
 				case MQTT_TypePUBREC:
 					if(recv_data_buf[1] == 0x02)
 					{
@@ -121,6 +122,7 @@ void pthread_socket_data_recv()
 						memcpy(send_buff, recv_data_buf, 4);
 						send_buff[0] = 0x62;
 						user_data_socket_send(send_buff, 4);
+						
 					}	
 					
 					break;
@@ -132,7 +134,13 @@ void pthread_socket_data_recv()
 					}	
 					
 					break;
-					
+#endif
+				case MQTT_TypePUBACK:
+					if(recv_data_buf[1] == 0x02)
+					{
+						g.PUBCOMP_PacketID = recv_data_buf[2]*128+recv_data_buf[3];
+						printf("MQTT_TypePUBACK PacketID = %04X\n", g.PUBCOMP_PacketID);
+					}
 				default:
 					break;
 			}
@@ -168,8 +176,10 @@ void pthread_keep_on_line(void)
 			timer.connect.runable = no;
 			debug_info("connect.");
 			/**** 处理连接 ********************************/
+			/*183.230.40.39*/
 
-			socket_fd_link_1 = CreateTcpConnect("183.230.40.39", 6002);
+			socket_fd_link_1 = CreateTcpConnect("admin.hlwmcu.com", 33860);
+			//socket_fd_link_1 = CreateTcpConnect("183.230.40.39", 6002);
 			
 			/************************************/
 			if(socket_fd_link_1 > 0)								//连接成功
